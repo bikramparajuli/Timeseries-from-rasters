@@ -1,0 +1,69 @@
+import geopandas as gpd
+import rasterio
+from rasterio.plot import show
+from rasterio.plot import show_hist
+import rasterstats
+import matplotlib.pyplot as plt
+import pandas as pd
+import os
+import numpy as np
+regions = gpd.read_file(r'E:\Thesis\DATA\Zonal statistics\Basin.shp')
+regions.plot()
+
+#0-200
+one_df = pd.DataFrame(regions.loc[0]).transpose()
+one_polyogn = gpd.GeoDataFrame(one_df, geometry='geometry')
+one_polyogn.crs = regions.crs
+#200-2000
+two_df = pd.DataFrame(regions.loc[1]).transpose()
+two_polyogn = gpd.GeoDataFrame(two_df, geometry='geometry')
+two_polyogn.crs = regions.crs
+#2000+
+three_df = pd.DataFrame(regions.loc[2]).transpose()
+three_polyogn = gpd.GeoDataFrame(three_df, geometry='geometry')
+three_polyogn.crs = regions.crs
+
+
+
+#creating empty pandas dataframe
+
+data = pd.DataFrame('', columns =['Date', 'Average rainfall 0-200', 'Average rainfall 200-2000', 'Average rainfall 2000+'], index = np.arange(1,240))
+
+i = 1
+#Reading the information from rainfall rasters
+for rast in os.listdir(r'C:\Users\bikra\Desktop\csv files\gw'):
+    if rast[-4: ] == '.tif':
+        rf = rasterio.open(r'C:\Users\bikra\Desktop\csv files\gw' + '\\' + rast)
+        rainfall_array = rf.read(1)
+        affine = rf.transform
+        print(rast)
+        
+        #0-200
+        avg_rf_one = rasterstats.zonal_stats(one_polyogn,
+                                             rainfall_array,
+                                             affine = affine,
+                                             stats = ['mean'],
+                                             geojason_out = True)
+        avg_rf_one = avg_rf_one[0]['mean']
+                #200-2000
+        avg_rf_two = rasterstats.zonal_stats(two_polyogn,
+                                             rainfall_array,
+                                             affine = affine,
+                                             stats = ['mean'],
+                                             geojason_out = True)
+        avg_rf_two = avg_rf_two[0]['mean']
+                #2000+
+        avg_rf_three = rasterstats.zonal_stats(three_polyogn,
+                                             rainfall_array,
+                                             affine = affine,
+                                             stats = ['mean'],
+                                             geojason_out = True)
+        avg_rf_three = avg_rf_three[0]['mean']
+               
+        #writing to pandas data frame
+        data.loc[i]['Date'] = rast[0:7]
+        data.loc[i]['Average rainfall 0-200'] = avg_rf_one
+        data.loc[i]['Average rainfall 200-2000'] = avg_rf_three
+        data.loc[i]['Average rainfall 2000+'] = avg_rf_two
+        
+        i = i + 1
